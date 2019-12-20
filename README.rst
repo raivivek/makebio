@@ -1,12 +1,12 @@
-ProjectPy
----------
+makeBio
+-------
 
 Quick setup bioinformatics research projects.
 
 Usage
 -----
 
-See `pyproject --help`.
+See `makebio --help`.
 
 Contact
 -------

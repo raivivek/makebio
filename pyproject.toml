@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "projectpy"
+name = "makebio"
 version = "0.1.0"
 description = "Quickly manage your research projects"
 authors = ["Vivek Rai <vivekrai@umich.edu>"]
@@ -14,7 +14,7 @@ click = "^7.0"
 pytest = "^4.6"
 
 [tool.poetry.scripts]
-projectpy = 'projectpy.cli:cli'
+makebio = 'makebio.cli:cli'
 
 [build-system]
 requires = ["poetry>=0.12"]

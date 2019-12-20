@@ -17,7 +17,7 @@ class Project(object):
     def __init__(self, debug=False):
         self.root = Path(".")
         self.debug = debug
-        self.config = read_config(self.root / "project.toml", self.debug)
+        self.config = read_config(self.root / "makebio.toml", self.debug)
 
 
 @click.group()
@@ -54,7 +54,7 @@ def cli(ctx, debug):
     # Don't throw error if init command is used
     if ctx.obj.config is None and ctx.invoked_subcommand != "init":
         click.echo(
-            "fatal: not a researchpy configured directory (project.toml not found)",
+            "fatal: not a researchpy configured directory (makebio.toml not found)",
             color="red",
         )
         exit(0)
@@ -89,7 +89,7 @@ def setup_config_and_dir(src, linkto, git, debug):
     config["configuration"]["init_git"] = git
     config["configuration"]["debug"] = debug
 
-    config_path = src / "project.toml"
+    config_path = src / "makebio.toml"
 
     with open(config_path, "w") as f:
         click.echo(f"Writing configuration to {config_path}")
