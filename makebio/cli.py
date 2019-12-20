@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import os
 import toml
-import shutil
-import logging
 import time
-import shutil
-import subprocess
+from os import chmod
 from pathlib import Path
+from shutil import copyfile
+from subprocess import check_output
 from stat import S_IREAD, S_IRGRP, S_IXUSR, S_IXGRP, S_ISVTX
 
 import click
@@ -59,7 +57,6 @@ def cli(ctx, debug):
     if ctx.obj.config is None and ctx.invoked_subcommand != "init":
         click.echo(
             "fatal: not a makebio configured directory (makebio.toml not found)",
-            color="red",
         )
         exit(0)
 
@@ -86,8 +83,8 @@ def setup_config_and_dir(src, linkto, git, debug):
     config["name"] = src.name
 
     # [params]
-    config["params"]["root"] = str(src)
-    config["params"]["linkto"] = str(linkto)
+    config["params"]["root"] = str(src.absolute())
+    config["params"]["linkto"] = str(linkto.absolute())
 
     # [configuration]
     config["configuration"]["init_git"] = git
@@ -115,14 +112,14 @@ def setup_config_and_dir(src, linkto, git, debug):
 
     if git:
         # Copy gitignore
-        shutil.copyfile(
-            Path(__file__).parent / "config" / "gitignore", src / ".gitignore"
-        )
+        copyfile(Path(__file__).parent / "config" / "gitignore", src / ".gitignore")
         try:
-            subprocess.check_output(["git", "init", src])
+            check_output(["git", "init", src])
+            click.echo("info: git init complete.")
         except Exception as e:
             click.echo("error: failed to init git.")
 
+    click.echo("info: configured.")
     return config
 
 
@@ -140,7 +137,7 @@ def init(project, src, linkto, git):
     """
     src, linkto = Path(src).expanduser(), Path(linkto).expanduser()
     if src.exists():
-        click.echo("Directory already exists.")
+        click.echo("fatal: directory already exists.")
         exit(0)
 
     result = click.confirm("Configure project?", default=True)
@@ -152,7 +149,7 @@ def init(project, src, linkto, git):
 
 @cli.command()
 @click.argument("name")
-@click.option("--prefix/no-prefix", default=True)
+@click.option("--prefix/--no-prefix", default=True)
 @click.pass_obj
 def add_analysis(project, name, prefix):
     """Add new analysis.
@@ -162,14 +159,21 @@ def add_analysis(project, name, prefix):
     """
 
     prefix = f"{time.strftime('%Y-%m-%d')}_" if prefix else ""
+    root = Path(project.config["params"]["root"])
 
-    project.config["params"]["root"] / "control" / f"{prefix}{name}"
-    project.config["params"]["root"] / "work" / f"{prefix}{name}"
+    try:
+        dir_name = f"{prefix}{name}"
+        (root / "control" / dir_name).mkdir(parents=True)
+        (root / "work" / dir_name).mkdir(parents=True)
+        click.echo("info: created %s." % dir_name)
+    except FileExistsError as e:
+        click.echo("fatal: directories already exist.")
+        exit(0)
 
 
 @cli.command()
 @click.argument("name")
-@click.option("--prefix/no-prefix", default=True)
+@click.option("--prefix/--no-prefix", default=True)
 @click.pass_obj
 def add_data(project, name, prefix):
     """Add new data.
@@ -179,11 +183,16 @@ def add_data(project, name, prefix):
     """
     prefix = f"{time.strftime('%Y-%m-%d')}_" if prefix else ""
 
-    control_dir = project.config["params"]["root"] / "control" / f"{prefix}{name}"
-    data_dir = project.config["params"]["root"] / "data" / f"{prefix}{name}"
+    root = Path(project.config["params"]["root"])
 
-    control_dir.mkdir()
-    data_dir.mkdir()
+    try:
+        dir_name = f"{prefix}{name}"
+        (root / "control" / dir_name).mkdir(parents=True)
+        (root / "data" / dir_name).mkdir(parents=True)
+        click.echo("info: created %s." % dir_name)
+    except FileExistsError as e:
+        click.echo("fatal: directories already exist.")
+        exit(0)
 
 
 @cli.command()
@@ -192,10 +201,12 @@ def add_data(project, name, prefix):
 def freeze(project, path):
     """Mark a directory read only."""
     # Set read/execute bits
-    if not Path(path).is_dir():
-        os.chmod(path, S_IREAD | S_IRGRP | S_ISVTX)
+    if Path(path).is_dir():
+        chmod(path, S_IREAD | S_IRGRP | S_ISVTX | S_IXUSR | S_IXGRP)
+        click.echo("info: directory marked read only.")
     else:
-        os.chmod(path, S_IREAD | S_IRGRP | S_ISVTX | S_IXUSR | S_IXGRP)
+        chmod(path, S_IREAD | S_IRGRP | S_ISVTX)
+        click.echo("info: file marked read only.")
 
     return path
 
@@ -206,7 +217,8 @@ def save(project):
     """Save a snapshot."""
     try:
         current_date = time.strftime("%Y-%m-%d %H:%M")
-        subprocess.check_output(["git", "add", "-A"])
-        subprocess.check_output(["git", "commit", f"-s -m 'Snapshot {current_date}'"])
+        check_output(["git", "add", "-A", "."])
+        check_output(["git", "commit", "-s", "-m", f"Snapshot {current_date}"])
+        click.echo("info: files added and commited.")
     except Exception as e:
-        click.echo("fatal: couldn't save.", color="red")
+        click.echo("fatal: couldn't save. nothing to save?")

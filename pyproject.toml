@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "makebio"
-version = "0.1.0.dev1"
+version = "0.1.1"
 description = "Quickly manage your research projects"
 authors = ["Vivek Rai <vivekrai@umich.edu>"]
 
