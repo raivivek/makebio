@@ -1,24 +1,25 @@
-makeBio
+makebio
 -------
+Manage computational biology projects with ease.
 
-Quick setup bioinformatics research projects.
+Installation
+------------
+
+:code:`pip install makebio`
 
 Usage
 -----
 
-See `makebio --help`.
+See :code:`makebio --help`.
 
-For autocompletion, add the following lines to your login file:
+For autocompletion, add the following lines to your login file (BASH):
+::
+  eval "$(_MAKEBIO_COMPLETE=source makebio)"
 
-```
-eval "$(_MAKEBIO_COMPLETE=source makebio)"
-```
 
 Or for ZSH,
-
-```
-eval "$(_MAKEBIO_COMPLETE=source_zsh makebio)"
-```
+::
+    eval "$(_MAKEBIO_COMPLETE=source_zsh makebio)"
 
 Contact
 -------
