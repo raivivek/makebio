@@ -14,16 +14,14 @@ from .about import __version__
 
 
 class Project(object):
-    def __init__(self, debug=False):
+    def __init__(self):
         self.root = Path(".")
-        self.debug = debug
-        self.config = read_config(self.root / "makebio.toml", self.debug)
+        self.config = read_config(self.root / "makebio.toml")
 
 
 @click.group()
-@click.option("--debug/--no-debug", default=False, help="Print debug information")
 @click.pass_context
-def cli(ctx, debug):
+def cli(ctx):
     """Quickly setup research projects.
 
     Generally, any high-performance computing cluster will limit the amount
@@ -42,44 +40,40 @@ def cli(ctx, debug):
     For example, 2019-04-20_createTracks or 2019-05-01_fastq.
 
     `freeze` marks the target directory and all files within to be read-only.
-    By default, it marks everything under `data/` to be read-only.
 
     CONTACT
 
-    Send comments to @raivivek.
+    Find out more at https://github.com/raivivek/makebio
+    @raivivek
     """
-    if debug:
-        click.echo("Debug mode is on.")
-
-    ctx.obj = Project(debug)
+    ctx.obj = Project()
 
     # Don't throw error if init command is used
     if ctx.obj.config is None and ctx.invoked_subcommand != "init":
-        click.echo(
+        click.secho(
             "fatal: not a makebio configured directory (makebio.toml not found)",
+            fg='red'
         )
         exit(0)
 
 
-def read_config(file, debug=False):
+def read_config(file):
     config = None
     if file.exists():
         config = toml.loads(open(file, "r").read())
     return config
 
 
-def setup_config_and_dir(src, linkto, git, debug):
-    src.mkdir(mode=0o744, parents=True)
-
+def setup_config_and_dir(src, linkto, git):
     # Read template from the directory where this package is installed
     config = read_config(Path(__file__).parent / "config" / "example_config.toml")
 
     if not config:
-        click.echo("Couldn't find template!")
+        click.secho("warning: could not locate template.", fg='yellow')
         config = {"params": {}, "configuration": {}, "metadata": {}}
 
-    config["author"] = click.prompt("Author")
-    config["email"] = click.prompt("Email")
+    config["author"] = click.prompt("author")
+    config["email"] = click.prompt("email")
     config["name"] = src.name
 
     # [params]
@@ -88,7 +82,6 @@ def setup_config_and_dir(src, linkto, git, debug):
 
     # [configuration]
     config["configuration"]["init_git"] = git
-    config["configuration"]["debug"] = debug
 
     # [metadata]
     config["metadata"]["version"] = __version__
@@ -96,12 +89,18 @@ def setup_config_and_dir(src, linkto, git, debug):
 
     config_path = src / "makebio.toml"
 
-    with open(config_path, "w") as f:
-        click.echo(f"Writing configuration to {config_path}")
-        toml.dump(config, f)
+    try:
+        (linkto / src.name / "work").mkdir(parents=True)
+        (linkto / src.name / "data").mkdir(parents=True)
+    except FileExistsError:
+        click.secho("fatal: %s already exists." % (linkto / src.name), fg='red')
+        exit(0)
 
-    (linkto / src.name / "work").mkdir(parents=True, mode=0o744, exist_ok=True)
-    (linkto / src.name / "data").mkdir(parents=True, mode=0o744, exist_ok=True)
+    src.mkdir(mode=0o744, parents=True)
+
+    with open(config_path, "w") as f:
+        click.secho(f"info: writing configuration to {config_path}", fg='yellow')
+        toml.dump(config, f)
 
     (src / "control").mkdir()
     (src / "notebooks").mkdir()
@@ -115,11 +114,11 @@ def setup_config_and_dir(src, linkto, git, debug):
         copyfile(Path(__file__).parent / "config" / "gitignore", src / ".gitignore")
         try:
             check_output(["git", "init", src])
-            click.echo("info: git init complete.")
-        except Exception as e:
-            click.echo("error: failed to init git.")
+            click.secho("info: git init complete.", fg='yellow')
+        except Exception:
+            click.secho("error: failed to init git.", fg='red')
 
-    click.echo("info: configured.")
+    click.secho("info: done.", fg='green')
     return config
 
 
@@ -137,14 +136,14 @@ def init(project, src, linkto, git):
     """
     src, linkto = Path(src).expanduser(), Path(linkto).expanduser()
     if src.exists():
-        click.echo("fatal: directory already exists.")
+        click.secho("fatal: %s already exists." % src, fg='red')
         exit(0)
 
-    result = click.confirm("Configure project?", default=True)
+    result = click.confirm("configure project?", default=True)
     if not result:
         exit(0)
 
-    setup_config_and_dir(src, linkto, git, project.debug)
+    setup_config_and_dir(src, linkto, git)
 
 
 @cli.command()
@@ -165,9 +164,9 @@ def add_analysis(project, name, prefix):
         dir_name = f"{prefix}{name}"
         (root / "control" / dir_name).mkdir(parents=True)
         (root / "work" / dir_name).mkdir(parents=True)
-        click.echo("info: created %s." % dir_name)
+        click.secho("info: created %s." % dir_name, fg='green')
     except FileExistsError as e:
-        click.echo("fatal: directories already exist.")
+        click.secho("fatal: directories already exist -- %s" % str(e), fg='red')
         exit(0)
 
 
@@ -189,9 +188,9 @@ def add_data(project, name, prefix):
         dir_name = f"{prefix}{name}"
         (root / "control" / dir_name).mkdir(parents=True)
         (root / "data" / dir_name).mkdir(parents=True)
-        click.echo("info: created %s." % dir_name)
+        click.secho("info: created %s." % dir_name, fg='green')
     except FileExistsError as e:
-        click.echo("fatal: directories already exist.")
+        click.secho("fatal: directories already exist -- %s" % str(e), fg='red')
         exit(0)
 
 
@@ -199,14 +198,16 @@ def add_data(project, name, prefix):
 @click.argument("path", type=click.Path(exists=True))
 @click.pass_obj
 def freeze(project, path):
-    """Mark a directory read only."""
-    # Set read/execute bits
+    """Mark a directory/file read only.
+    
+    Also sets the sticky bit so that only owner can change the persmissions.
+    """
     if Path(path).is_dir():
-        chmod(path, S_IREAD | S_IRGRP | S_ISVTX | S_IXUSR | S_IXGRP)
-        click.echo("info: directory marked read only.")
+        chmod(path, S_IREAD | S_IRGRP | S_ISVTX | S_IXUSR | S_IXGRP) # Set read/execute bits
+        click.secho("info: directory marked read only.", fg='green')
     else:
         chmod(path, S_IREAD | S_IRGRP | S_ISVTX)
-        click.echo("info: file marked read only.")
+        click.secho("info: file marked read only.", fg='green')
 
     return path
 
@@ -214,11 +215,14 @@ def freeze(project, path):
 @cli.command()
 @click.pass_obj
 def save(project):
-    """Save a snapshot."""
+    """Save a snapshot.
+    
+    Add all files to staging area and commit them.
+    """
     try:
         current_date = time.strftime("%Y-%m-%d %H:%M")
         check_output(["git", "add", "-A", "."])
         check_output(["git", "commit", "-s", "-m", f"Snapshot {current_date}"])
-        click.echo("info: files added and commited.")
+        click.secho("info: files added and commited.", fg='green')
     except Exception as e:
-        click.echo("fatal: couldn't save. nothing to save?")
+        click.secho("fatal: couldn't save -- %s" % str(e), fg='red')

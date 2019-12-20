@@ -8,7 +8,6 @@ name = ""
 
 [configuration]
     init_git = false
-    debug = false
 
 [metadata]
     version = ""
