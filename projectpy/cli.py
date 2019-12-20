@@ -6,6 +6,7 @@ import time
 import shutil
 import subprocess
 from pathlib import Path
+from stat import S_IREAD, S_IRGRP, S_IXUSR, S_IXGRP, S_ISVTX
 
 import click
 
@@ -70,13 +71,15 @@ def setup_config_and_dir(src, linkto, git, debug):
         click.echo("Couldn't find template!")
         config = {"params": {}, "configuration": {}, "metadata": {}}
 
+    config["author"] = click.prompt("Author")
+    config["email"] = click.prompt("Email")
+    config["name"] = src.name
+
+    # [params]
     config["params"]["root"] = str(src)
     config["params"]["linkto"] = str(linkto)
 
-    config["params"]["author"] = click.prompt("Author")
-    config["params"]["email"] = click.prompt("Email")
-
-    config["name"] = src.name
+    # [configuration]
     config["configuration"]["init_git"] = git
     config["configuration"]["debug"] = debug
 
@@ -113,6 +116,12 @@ def setup_config_and_dir(src, linkto, git, debug):
 @click.option("--git/--no-git", default=True)
 @click.pass_obj
 def init(project, src, linkto, git):
+    """Initialize a new project.
+
+    Sets up the directory structure, and if specified by --git, also puts the whole
+    directory under Git (if installed) version control. Suitable .gitignore is also
+    supplied.
+    """
     src, linkto = Path(src).expanduser(), Path(linkto).expanduser()
     if src.exists():
         click.echo("Directory already exists.")
@@ -154,21 +163,35 @@ def add_data(project, name, prefix):
     """
     prefix = f"{time.strftime('%Y-%m-%d')}_" if prefix else ""
 
-    project.config["params"]["root"] / "control" / f"{prefix}{name}"
-    project.config["params"]["root"] / "data" / f"{prefix}{name}"
+    control_dir = project.config["params"]["root"] / "control" / f"{prefix}{name}"
+    data_dir = project.config["params"]["root"] / "data" / f"{prefix}{name}"
+
+    control_dir.mkdir()
+    data_dir.mkdir()
 
 
 @cli.command()
-@click.argument("name")
+@click.argument("path", type=click.Path(exists=True))
 @click.pass_obj
-def freeze(project, name):
-    click.echo("name")
-    pass
+def freeze(project, path):
+    """Mark a directory read only."""
+    # Set read/execute bits
+    if not Path(path).is_dir():
+        os.chmod(path, S_IREAD | S_IRGRP | S_ISVTX)
+    else:
+        os.chmod(path, S_IREAD | S_IRGRP | S_ISVTX | S_IXUSR | S_IXGRP)
+
+    return path
+
 
 
 @cli.command()
-@click.argument("name")
 @click.pass_obj
-def save(project, name):
-    click.echo("name")
-    pass
+def save(project):
+    """Save a snapshot."""
+    try:
+        current_date = time.strftime('%Y-%m-%d %H:%M')
+        subprocess.check_output(["git", "add", "-A"])
+        subprocess.check_output(["git", "commit", f"-s -m 'Snapshot {current_date}'"])
+    except:
+        click.echo("fatal: couldn't save.", color = 'red')
