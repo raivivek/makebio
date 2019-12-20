@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import toml
 import shutil
@@ -50,7 +52,7 @@ def cli(ctx, debug):
     ctx.obj = Project(debug)
 
     # Don't throw error if init command is used
-    if ctx.obj.config is None and ctx.invoked_subcommand != 'init':
+    if ctx.obj.config is None and ctx.invoked_subcommand != "init":
         click.echo(
             "fatal: not a researchpy configured directory (project.toml not found)",
             color="red",
@@ -105,7 +107,9 @@ def setup_config_and_dir(src, linkto, git, debug):
 
     if git:
         # Copy gitignore
-        shutil.copyfile(Path(__file__).parent / "config" / "gitignore", src / ".gitignore")
+        shutil.copyfile(
+            Path(__file__).parent / "config" / "gitignore", src / ".gitignore"
+        )
         try:
             subprocess.check_output(["git", "init", src])
         except:
@@ -188,14 +192,13 @@ def freeze(project, path):
     return path
 
 
-
 @cli.command()
 @click.pass_obj
 def save(project):
     """Save a snapshot."""
     try:
-        current_date = time.strftime('%Y-%m-%d %H:%M')
+        current_date = time.strftime("%Y-%m-%d %H:%M")
         subprocess.check_output(["git", "add", "-A"])
         subprocess.check_output(["git", "commit", f"-s -m 'Snapshot {current_date}'"])
     except:
-        click.echo("fatal: couldn't save.", color = 'red')
+        click.echo("fatal: couldn't save.", color="red")
