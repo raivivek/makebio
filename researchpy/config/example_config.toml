@@ -1,0 +1,15 @@
+author = ""
+email = ""
+name = ""
+
+[params]
+    root = ""
+    work_dir = ""
+
+[configuration]
+    init_git = false
+    debug = false
+
+[metadata]
+    version = ""
+    created_on = ""
