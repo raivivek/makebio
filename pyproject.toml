@@ -6,9 +6,8 @@ authors = ["Vivek Rai <vivekrai@umich.edu>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-toml = "^0.10.0"
-snakemake = {version = "^5.8.2", optional = true}
 click = "^7.0"
+toml = "^0.10.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.6"

@@ -4,7 +4,7 @@ name = ""
 
 [params]
     root = ""
-    work_dir = ""
+    link_to = ""
 
 [configuration]
     init_git = false

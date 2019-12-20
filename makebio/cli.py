@@ -12,6 +12,8 @@ from stat import S_IREAD, S_IRGRP, S_IXUSR, S_IXGRP, S_ISVTX
 
 import click
 
+from .about import __version__
+
 
 class Project(object):
     def __init__(self, debug=False):
@@ -48,7 +50,9 @@ def cli(ctx, debug):
 
     Send comments to @raivivek.
     """
-    click.echo("Debug mode is %s" % ("on" if debug else "off"))
+    if debug:
+        click.echo("Debug mode is on.")
+
     ctx.obj = Project(debug)
 
     # Don't throw error if init command is used
@@ -89,6 +93,10 @@ def setup_config_and_dir(src, linkto, git, debug):
     config["configuration"]["init_git"] = git
     config["configuration"]["debug"] = debug
 
+    # [metadata]
+    config["metadata"]["version"] = __version__
+    config["metadata"]["created_on"] = time.strftime("%Y-%m-%d")
+
     config_path = src / "makebio.toml"
 
     with open(config_path, "w") as f:
@@ -112,7 +120,7 @@ def setup_config_and_dir(src, linkto, git, debug):
         )
         try:
             subprocess.check_output(["git", "init", src])
-        except:
+        except Exception as e:
             click.echo("error: failed to init git.")
 
     return config
@@ -200,5 +208,5 @@ def save(project):
         current_date = time.strftime("%Y-%m-%d %H:%M")
         subprocess.check_output(["git", "add", "-A"])
         subprocess.check_output(["git", "commit", f"-s -m 'Snapshot {current_date}'"])
-    except:
+    except Exception as e:
         click.echo("fatal: couldn't save.", color="red")
