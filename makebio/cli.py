@@ -58,7 +58,7 @@ def cli(ctx, debug):
     # Don't throw error if init command is used
     if ctx.obj.config is None and ctx.invoked_subcommand != "init":
         click.echo(
-            "fatal: not a researchpy configured directory (makebio.toml not found)",
+            "fatal: not a makebio configured directory (makebio.toml not found)",
             color="red",
         )
         exit(0)
