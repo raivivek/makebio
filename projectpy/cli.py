@@ -41,6 +41,10 @@ def cli(ctx, debug):
 
     `freeze` marks the target directory and all files within to be read-only.
     By default, it marks everything under `data/` to be read-only.
+
+    CONTACT
+
+    Send comments to @raivivek.
     """
     click.echo("Debug mode is %s" % ("on" if debug else "off"))
     ctx.obj = Project(debug)
