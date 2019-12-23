@@ -22,17 +22,21 @@ class Project(object):
 @click.group()
 @click.pass_context
 def cli(ctx):
-    """Quickly setup research projects.
+    """Manage computational biology research projects.
 
-    Generally, any high-performance computing cluster will limit the amount
-    of space on your home directory and provide an external mouted space for
-    scratch work. The idea is that your code and necessary files sit within
-    the home directory and all intermediate files which could take up a lot
-    of space are kept on the scratch.
+    Computational biology or Bioinformatics projects utilize HPC systems
+    that typically limit the amount of space on your home directory and
+    provide an external mouted space for scratch work. The idea is that your
+    code and necessary files sit within the home directory and all intermediate
+    files which could take up a lot of space are kept on the scratch.
 
     This necessiates organizing your work in such a way that even though the
     underlying data is fragmented, it all should transparently appear in one
     place for the user.
+
+    makebio is a simple utility to create and manage such projects. While still
+    in development, it is actively used by at least one person in their daily
+    bioinformatics work.
 
     NOTES
 
@@ -43,7 +47,9 @@ def cli(ctx):
 
     CONTACT
 
-    Find out more at https://github.com/raivivek/makebio
+    Suggest your ideas and changes on GitHub.\n
+
+    https://github.com/raivivek/makebio\n
     @raivivek
     """
     ctx.obj = Project()
@@ -52,7 +58,7 @@ def cli(ctx):
     if ctx.obj.config is None and ctx.invoked_subcommand != "init":
         click.secho(
             "fatal: not a makebio configured directory (makebio.toml not found)",
-            fg='red'
+            fg="red",
         )
         exit(0)
 
@@ -69,7 +75,7 @@ def setup_config_and_dir(src, linkto, git):
     config = read_config(Path(__file__).parent / "config" / "example_config.toml")
 
     if not config:
-        click.secho("warning: could not locate template.", fg='yellow')
+        click.secho("warning: could not locate template.", fg="yellow")
         config = {"params": {}, "configuration": {}, "metadata": {}}
 
     config["author"] = click.prompt("author")
@@ -93,13 +99,13 @@ def setup_config_and_dir(src, linkto, git):
         (linkto / src.name / "work").mkdir(parents=True)
         (linkto / src.name / "data").mkdir(parents=True)
     except FileExistsError:
-        click.secho("fatal: %s already exists." % (linkto / src.name), fg='red')
+        click.secho("fatal: %s already exists." % (linkto / src.name), fg="red")
         exit(0)
 
     src.mkdir(mode=0o744, parents=True)
 
     with open(config_path, "w") as f:
-        click.secho(f"info: writing configuration to {config_path}", fg='yellow')
+        click.secho(f"info: writing configuration to {config_path}", fg="yellow")
         toml.dump(config, f)
 
     (src / "control").mkdir()
@@ -114,11 +120,11 @@ def setup_config_and_dir(src, linkto, git):
         copyfile(Path(__file__).parent / "config" / "gitignore", src / ".gitignore")
         try:
             check_output(["git", "init", src])
-            click.secho("info: git init complete.", fg='yellow')
+            click.secho("info: git init complete.", fg="yellow")
         except Exception:
-            click.secho("error: failed to init git.", fg='red')
+            click.secho("error: failed to init git.", fg="red")
 
-    click.secho("info: done.", fg='green')
+    click.secho("info: done.", fg="green")
     return config
 
 
@@ -136,7 +142,7 @@ def init(project, src, linkto, git):
     """
     src, linkto = Path(src).expanduser(), Path(linkto).expanduser()
     if src.exists():
-        click.secho("fatal: %s already exists." % src, fg='red')
+        click.secho("fatal: %s already exists." % src, fg="red")
         exit(0)
 
     result = click.confirm("configure project?", default=True)
@@ -164,9 +170,9 @@ def add_analysis(project, name, prefix):
         dir_name = f"{prefix}{name}"
         (root / "control" / dir_name).mkdir(parents=True)
         (root / "work" / dir_name).mkdir(parents=True)
-        click.secho("info: created %s." % dir_name, fg='green')
+        click.secho("info: created %s." % dir_name, fg="green")
     except FileExistsError as e:
-        click.secho("fatal: directories already exist -- %s" % str(e), fg='red')
+        click.secho("fatal: directories already exist -- %s" % str(e), fg="red")
         exit(0)
 
 
@@ -188,9 +194,9 @@ def add_data(project, name, prefix):
         dir_name = f"{prefix}{name}"
         (root / "control" / dir_name).mkdir(parents=True)
         (root / "data" / dir_name).mkdir(parents=True)
-        click.secho("info: created %s." % dir_name, fg='green')
+        click.secho("info: created %s." % dir_name, fg="green")
     except FileExistsError as e:
-        click.secho("fatal: directories already exist -- %s" % str(e), fg='red')
+        click.secho("fatal: directories already exist -- %s" % str(e), fg="red")
         exit(0)
 
 
@@ -199,15 +205,17 @@ def add_data(project, name, prefix):
 @click.pass_obj
 def freeze(project, path):
     """Mark a directory/file read only.
-    
-    Also sets the sticky bit so that only owner can change the persmissions.
+
+    Sets the sticky bit so that only owner can change the persmissions.
     """
     if Path(path).is_dir():
-        chmod(path, S_IREAD | S_IRGRP | S_ISVTX | S_IXUSR | S_IXGRP) # Set read/execute bits
-        click.secho("info: directory marked read only.", fg='green')
+        chmod(
+            path, S_IREAD | S_IRGRP | S_ISVTX | S_IXUSR | S_IXGRP
+        )  # Set read/execute bits
+        click.secho("info: directory marked read only.", fg="green")
     else:
         chmod(path, S_IREAD | S_IRGRP | S_ISVTX)
-        click.secho("info: file marked read only.", fg='green')
+        click.secho("info: file marked read only.", fg="green")
 
     return path
 
@@ -215,14 +223,14 @@ def freeze(project, path):
 @cli.command()
 @click.pass_obj
 def save(project):
-    """Save a snapshot.
-    
-    Add all files to staging area and commit them.
+    """Save a (Git) snapshot.
+
+    Stage all files and commit them.
     """
     try:
         current_date = time.strftime("%Y-%m-%d %H:%M")
         check_output(["git", "add", "-A", "."])
         check_output(["git", "commit", "-s", "-m", f"Snapshot {current_date}"])
-        click.secho("info: files added and commited.", fg='green')
+        click.secho("info: files added and commited.", fg="green")
     except Exception as e:
-        click.secho("fatal: couldn't save -- %s" % str(e), fg='red')
+        click.secho("fatal: couldn't save -- %s" % str(e), fg="red")
