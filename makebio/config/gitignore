@@ -1,3 +1,8 @@
+## logs/misc
+control/**/.snakemake
+control/**/.nextflow
+control/**/logs
+control/**/.logs
 
 ## Project ##
 data/
