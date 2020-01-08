@@ -227,7 +227,7 @@ def freeze(project, path):
 
 
 @cli.command()
-@click.argument("path", required=False, help="Directory to save")
+@click.argument("path", required=False)
 @click.pass_obj
 def save(project, path):
     """Save a (Git) snapshot.
