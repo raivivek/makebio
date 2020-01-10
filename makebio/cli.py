@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import toml
 import time
 from os import chmod
 from pathlib import Path
@@ -8,6 +7,7 @@ from shutil import copyfile
 from subprocess import check_output
 from stat import S_IREAD, S_IRGRP, S_IXUSR, S_IXGRP, S_ISVTX
 
+import toml
 import click
 
 from .about import __version__
@@ -19,17 +19,28 @@ class Project(object):
             "author": "",
             "email": "",
             "name": "",
-            "params": {"root": Path("."), "linkto": ""},
-            "configuration": {"init_git": ""},
-            "metadata": {"version": __version__, "created_on": "", "last_commit": ""},
+            "params": {
+                "root": Path(".").absolute(),
+                "linkto": ""
+            },
+            "configuration": {
+                "init_git": ""
+            },
+            "metadata": {
+                "version": __version__,
+                "created_on": "",
+                "last_commit": ""
+            },
         }
 
     @property
     def config(self):
         config_p = Path(self._config["params"]["root"]) / "makebio.toml"
+        flag = False
         if config_p.exists():
+            flag = True
             self._config = toml.loads(open(config_p, "r").read())
-        return self._config
+        return (self._config, flag)
 
     @config.setter
     def config(self, config):
@@ -45,19 +56,18 @@ class Project(object):
 def cli(ctx):
     """Manage computational biology research projects.
 
-    Computational biology or Bioinformatics projects utilize HPC systems
-    that typically limit the amount of space on your home directory and
-    provide an external mouted space for scratch work. The idea is that your
-    code and necessary files sit within the home directory and all intermediate
-    files which could take up a lot of space are kept on the scratch.
+    Computational biology or Bioinformatics projects utilize HPC systems that typically
+    limit the amount of space on your home directory and provide an external mouted space
+    for scratch work. The idea is that your code and necessary files sit within the home
+    directory and all intermediate files which could take up a lot of space are kept on
+    the scratch.
 
-    This necessiates organizing your work in such a way that even though the
-    underlying data is fragmented, it all should transparently appear in one
-    place for the user.
+    This necessiates organizing your work in such a way that even though the underlying
+    data is fragmented, it all should transparently appear in one place for the user.
 
-    makebio is a simple utility to create and manage such projects. While still
-    in development, it is actively used by at least one person in their daily
-    bioinformatics work.
+    makebio is a simple utility to create and manage such projects. While still in
+    development, it is actively used by at least one person in their daily bioinformatics
+    work.
 
     NOTES
 
@@ -76,11 +86,12 @@ def cli(ctx):
     ctx.obj = Project()
 
     # Don't throw error if init command is used
-    if ctx.obj.config is None and ctx.invoked_subcommand != "init":
+    if not ctx.obj.config[1] and ctx.invoked_subcommand != "init":
         click.secho(
             "fatal: not a makebio configured directory (makebio.toml not found)",
             fg="red",
         )
+        click.echo("info: makebio --help.")
         exit(0)
 
 
@@ -227,7 +238,7 @@ def freeze(project, path):
 
 
 @cli.command()
-@click.argument("path", required=False)
+@click.argument("path", type=click.Path(exists=True), required=False)
 @click.pass_obj
 def save(project, path):
     """Save a (Git) snapshot.

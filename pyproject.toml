@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "makebio"
-version = "0.1.4"
-description = "Quickly manage your research projects"
+version = "0.1.5"
+description = "Manage your computational biology research projects"
 authors = ["Vivek Rai <vivekrai@umich.edu>"]
 
 [tool.poetry.dependencies]
