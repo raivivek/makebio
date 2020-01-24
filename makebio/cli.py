@@ -52,6 +52,7 @@ class Project(object):
 
 
 @click.group()
+@click.version_option(version=__version__)
 @click.pass_context
 def cli(ctx):
     """Manage computational biology research projects.
@@ -98,11 +99,11 @@ def cli(ctx):
 def setup_config_and_dir(project, src, linkto, git):
     config = project.config
 
-    config["author"] = click.prompt("author")
-    config["email"] = click.prompt("email")
-    config["name"] = src.name
+    config["author"] = click.prompt("author", default="Vivek Rai")
+    config["email"] = click.prompt("email", default="vivekrai@umich.edu")
 
     # [params]
+    config["name"] = src.name
     config["params"]["root"] = str(src.absolute())
     config["params"]["linkto"] = str(linkto.absolute())
 
@@ -221,7 +222,7 @@ def add_data(project, name, prefix):
 @click.argument("path", type=click.Path(exists=True))
 @click.pass_obj
 def freeze(project, path):
-    """Mark a directory/file read only.
+    """Mark a directory/file read only (for the user/group).
 
     Sets the sticky bit so that only owner can change the persmissions.
     """
