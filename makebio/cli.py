@@ -57,18 +57,19 @@ class Project(object):
 def cli(ctx):
     """Manage computational biology research projects.
 
-    Computational biology or Bioinformatics projects utilize HPC systems that typically
-    limit the amount of space on your home directory and provide an external mouted space
-    for scratch work. The idea is that your code and necessary files sit within the home
-    directory and all intermediate files which could take up a lot of space are kept on
-    the scratch.
+    Computational biology or Bioinformatics projects utilize HPC systems that
+    typically limit the amount of space on your home directory and provide an
+    external mouted space for scratch work. The idea is that your code and
+    necessary files sit within the home directory and all intermediate files
+    which could take up a lot of space are kept on the scratch.
 
-    This necessiates organizing your work in such a way that even though the underlying
-    data is fragmented, it all should transparently appear in one place for the user.
+    This necessiates organizing your work in such a way that even though the
+    underlying data is fragmented, it all should transparently appear in one
+    place for the user.
 
-    makebio is a simple utility to create and manage such projects. While still in
-    development, it is actively used by at least one person in their daily bioinformatics
-    work.
+    makebio is a simple utility to create and manage such projects. While still
+    in development, it is actively used by at least one person in their daily
+    bioinformatics work.
 
     NOTES
 
@@ -97,7 +98,10 @@ def cli(ctx):
 
 
 def setup_config_and_dir(project, src, linkto, git):
-    config = project.config
+    config, config_found_flag = project.config
+
+    if config_found_flag:
+        return config
 
     config["author"] = click.prompt("author", default="Vivek Rai")
     config["email"] = click.prompt("email", default="vivekrai@umich.edu")
@@ -136,7 +140,7 @@ def setup_config_and_dir(project, src, linkto, git):
         except Exception:
             click.secho("error: failed to init git.", fg="red")
 
-    project.config = config
+    project.config[0] = config
 
     click.secho("info: done.", fg="green")
     return config
@@ -150,9 +154,9 @@ def setup_config_and_dir(project, src, linkto, git):
 def init(project, src, linkto, git):
     """Initialize a new project.
 
-    Sets up the directory structure, and if specified by --git, also puts the whole
-    directory under Git (if installed) version control. Suitable .gitignore is also
-    supplied.
+    Sets up the directory structure, and if specified by --git, also puts
+    the whole directory under Git (if installed) version control. Suitable
+    .gitignore is also supplied.
     """
     src, linkto = Path(src).expanduser(), Path(linkto).expanduser()
     if src.exists():
@@ -182,7 +186,7 @@ def add_analysis(project, name, prefix):
     """
 
     prefix = f"{time.strftime('%Y-%m-%d')}_" if prefix else ""
-    root = project.root
+    root = Path(project.config[0]["params"]["root"])
 
     try:
         dir_name = f"{prefix}{name}"
@@ -205,8 +209,7 @@ def add_data(project, name, prefix):
     date as PREFIX (YY-MM-DD): PREFIX_NAME
     """
     prefix = f"{time.strftime('%Y-%m-%d')}_" if prefix else ""
-
-    root = project.root
+    root = Path(project.config[0]["params"]["root"])
 
     try:
         dir_name = f"{prefix}{name}"
@@ -220,11 +223,14 @@ def add_data(project, name, prefix):
 
 @cli.command()
 @click.argument("path", type=click.Path(exists=True))
+@click.argument("--recursive", required=False, default=False)
 @click.pass_obj
-def freeze(project, path):
+def freeze(project, path, recursive):
     """Mark a directory/file read only (for the user/group).
 
     Sets the sticky bit so that only owner can change the persmissions.
+
+    --recursive will make all dirs/files within readonly.
     """
     if Path(path).is_dir():
         chmod(
@@ -244,20 +250,20 @@ def freeze(project, path):
 def save(project, path):
     """Save a (Git) snapshot.
 
-    Stage all files and commit them. No Undo command is implemented, so if you commit all
-    the changes, just write a new commit to make new changes (including reverts).
+    Stage all files and commit them. No Undo command is implemented, so
+    if you commit all the changes, just write a new commit to make new
+    changes (including reverts).
     """
     try:
         current_date = time.strftime("%Y-%m-%d %H:%M")
-        check_output(["git", "add", "-A", "."])
-        check_output(["git", "commit", "-m", f"Snapshot {current_date}"])
+        check_output(f"git diff-index --quiet HEAD || git commit -m '{current_date}'", shell=True)
         click.secho("success: files added and commited.", fg="green")
 
         commit_id = check_output(["git", "rev-parse", "HEAD"], encoding="utf-8").strip()
 
-        update_info = project.config
+        update_info = project.config[0]
         update_info["metadata"].update({"last_commit": commit_id})
-        project.config = update_info
+        project.config[0] = update_info
     except Exception as e:
         click.secho("fatal: couldn't save -- %s" % str(e), fg="red")
         click.echo("tip: nothing to commit?")
