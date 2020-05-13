@@ -4,23 +4,23 @@ import time
 from os import chmod
 from pathlib import Path
 from shutil import copyfile
+from stat import S_IREAD, S_IRGRP, S_ISVTX, S_IXGRP, S_IXUSR
 from subprocess import check_output
-from stat import S_IREAD, S_IRGRP, S_IXUSR, S_IXGRP, S_ISVTX
 
-import toml
 import click
+import toml
 
 from .about import __version__
 
 
 class Project(object):
-    def __init__(self):
+    def __init__(self, path="."):
         self._config = {
             "author": "",
             "email": "",
             "name": "",
             "params": {
-                "root": Path(".").absolute(),
+                "root": Path(path).absolute(),
                 "linkto": ""
             },
             "configuration": {
@@ -59,11 +59,11 @@ def cli(ctx):
 
     Computational biology or Bioinformatics projects utilize HPC systems that
     typically limit the amount of space on your home directory and provide an
-    external mouted space for scratch work. The idea is that your code and
+    external mounted space for scratch work. The idea is that your code and
     necessary files sit within the home directory and all intermediate files
     which could take up a lot of space are kept on the scratch.
 
-    This necessiates organizing your work in such a way that even though the
+    This necessitates organizing your work in such a way that even though the
     underlying data is fragmented, it all should transparently appear in one
     place for the user.
 
@@ -74,15 +74,15 @@ def cli(ctx):
     NOTES
 
     `analysis` and `data` directories are prefixed with the date of creation.
-    For example, 2019-04-20_createTracks or 2019-05-01_fastq.
+    For example, `2019-04-20_createTracks` or `2019-05-01_fastq`.
 
     `freeze` marks the target directory and all files within to be read-only.
 
     CONTACT
 
-    Suggest your ideas and changes on GitHub.\n
+    Please leave suggestions on and bugs reports on GitHub [1].\n
 
-    https://github.com/raivivek/makebio\n
+    [1]: https://github.com/raivivek/makebio\n
     @raivivek
     """
     ctx.obj = Project()
@@ -140,7 +140,7 @@ def setup_config_and_dir(project, src, linkto, git):
         except Exception:
             click.secho("error: failed to init git.", fg="red")
 
-    project.config[0] = config
+    project.config = config
 
     click.secho("info: done.", fg="green")
     return config
@@ -254,16 +254,31 @@ def save(project, path):
     if you commit all the changes, just write a new commit to make new
     changes (including reverts).
     """
+    if path:
+        project
     try:
+        check_if_git = check_output("git rev-parse --is-inside-work-tree", shell=True).strip()
+        # Initialize git if not done before
+        if not check_if_git == "true":
+            check_output("git init", shell=True)
+            click.secho("info: initialized git")
+
+        check_untracked = check_output("git status -s", shell=True).strip().split()
+
+        if len(check_untracked) < 3:
+            click.secho("tip: nothing to save?")
+            return
+
         current_date = time.strftime("%Y-%m-%d %H:%M")
-        check_output(f"git diff-index --quiet HEAD || git commit -m '{current_date}'", shell=True)
-        click.secho("success: files added and commited.", fg="green")
+        check_output("git ls-files -z -o --exclude-standard | xargs -0 git add")
+        check_output(f"git commit -m \"{current_date}\"", shell=True)
+        click.secho("success: files added and committed.", fg="green")
 
         commit_id = check_output(["git", "rev-parse", "HEAD"], encoding="utf-8").strip()
 
-        update_info = project.config[0]
+        update_info, _ = project.config
         update_info["metadata"].update({"last_commit": commit_id})
-        project.config[0] = update_info
+        project.config = update_info
     except Exception as e:
         click.secho("fatal: couldn't save -- %s" % str(e), fg="red")
         click.echo("tip: nothing to commit?")
