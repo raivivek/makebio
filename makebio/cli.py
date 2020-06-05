@@ -135,7 +135,7 @@ def setup_config_and_dir(project, src, linkto, git):
         # Copy gitignore
         copyfile(Path(__file__).parent / "config" / "gitignore", src / ".gitignore")
         try:
-            check_output(["git", "init", src])
+            check_output(f"git init {src}", shell=True)
             click.secho("info: git init complete.", fg="yellow")
         except Exception:
             click.secho("error: failed to init git.", fg="red")
@@ -265,16 +265,16 @@ def save(project, path):
 
         check_untracked = check_output("git status -s", shell=True).strip().split()
 
-        if len(check_untracked) < 3:
+        if len(check_untracked) < 2:
             click.secho("tip: nothing to save?")
             return
 
         current_date = time.strftime("%Y-%m-%d %H:%M")
-        check_output("git ls-files -z -o --exclude-standard | xargs -0 git add")
+        check_output("git ls-files -z -o --exclude-standard | xargs -0 git add", shell=True)
         check_output(f"git commit -m \"{current_date}\"", shell=True)
         click.secho("success: files added and committed.", fg="green")
 
-        commit_id = check_output(["git", "rev-parse", "HEAD"], encoding="utf-8").strip()
+        commit_id = check_output("git rev-parse HEAD", shell=True, encoding="utf-8").strip()
 
         update_info, _ = project.config
         update_info["metadata"].update({"last_commit": commit_id})
