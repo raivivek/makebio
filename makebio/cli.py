@@ -257,7 +257,7 @@ def save(project, path):
     if path:
         project
     try:
-        check_if_git = check_output("git rev-parse --is-inside-work-tree", shell=True).strip()
+        check_if_git = check_output("git rev-parse --is-inside-work-tree", shell=True, encoding="utf-8").strip()
         # Initialize git if not done before
         if not check_if_git == "true":
             check_output("git init", shell=True)
@@ -270,7 +270,7 @@ def save(project, path):
             return
 
         current_date = time.strftime("%Y-%m-%d %H:%M")
-        check_output("git ls-files -z -o --exclude-standard | xargs -0 git add", shell=True)
+        check_output("git ls-files -z -dmo --exclude-standard | xargs -0 git add", shell=True)
         check_output(f"git commit -m \"{current_date}\"", shell=True)
         click.secho("success: files added and committed.", fg="green")
 
