@@ -61,8 +61,11 @@ See :code:`makebio --help`.
     --help     Show this message and exit.
 
   Commands:
-    add-analysis  Add new analysis.
-    add-data      Add new data.
-    freeze        Mark a directory/file read only (for the user/group).
-    init          Initialize a new project.
-    save          Save a (Git) snapshot.
+    add-analysis     Add new analysis.
+    add-data         Add new data.
+    freeze           Mark a directory/file read only (for the user/group).
+    init             Initialize a new project.
+    rename-analysis  Rename existing analysis.
+    save             Save a (Git) snapshot.
+    show             Show current configuration.
+    update           Refresh configuration with new changes.
