@@ -1,8 +1,16 @@
 ## logs/misc
-control/**/.snakemake
-control/**/.nextflow
-control/**/logs
-control/**/.logs
+**/.snakemake
+**/.nextflow
+**/logs
+**/.logs
+**/.drmr
+**/.nextflow.log*
+**/.vscode
+
+## R
+*.RData
+*.rds
+*.RDS
 
 ## Project ##
 data/

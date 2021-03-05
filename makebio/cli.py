@@ -5,7 +5,7 @@ from os import chmod
 from pathlib import Path
 from shutil import copyfile
 from stat import S_IREAD, S_IRGRP, S_ISVTX, S_IXGRP, S_IXUSR
-from subprocess import check_output
+from subprocess import check_output, Popen
 
 import click
 import toml
@@ -169,6 +169,7 @@ def init(project, src, linkto, git):
 
     result = click.confirm("configure project?", default=True)
     if not result:
+        click.secho("OK.")
         exit(0)
 
     setup_config_and_dir(project, src, linkto, git)
@@ -192,10 +193,100 @@ def add_analysis(project, name, prefix):
         dir_name = f"{prefix}{name}"
         (root / "control" / dir_name).mkdir(parents=True)
         (root / "work" / dir_name).mkdir(parents=True)
+        # `target_is_directory` must be True for compatibility with Windows
+        (root / "control" / dir_name / "work").symlink_to(root / "work" / dir_name, target_is_directory=True)
+
         click.secho("success: created %s." % dir_name, fg="green")
     except FileExistsError as e:
         click.secho("fatal: directories already exist -- %s" % str(e), fg="red")
+        exit(1)
+
+
+@cli.command()
+@click.pass_obj
+@click.option("-a", "--all", is_flag=True)
+@click.option("-l", "--latest", default=True, is_flag=True)
+def show(project, all, latest):
+    """Show current configuration."""
+
+    if all:
+        print(toml.dumps(project.config[0]))
+
+    if latest:
+        proc = Popen(["git", "log", "-1"], shell=False)
+        proc.communicate()
+
+    exit(0)
+
+
+@cli.command()
+@click.pass_obj
+def update(project):
+    """Refresh configuration with new changes.
+
+    If you manually save your working tree, the commit information can become
+    out of sync with the value saved in `makebio.toml`. This command will
+    update recorded value with last commit in the tree.
+    """
+
+    last_recorded_commit = project.config[0]["metadata"]["last_commit"]
+
+    if last_recorded_commit == "null":
+        click.secho("info: please run `makebio save` first.", fg="yellow")
         exit(0)
+
+    current_head = check_output("git rev-parse HEAD", shell=True, encoding="utf-8").strip()
+
+    if current_head != last_recorded_commit:
+        update_info, _ = project.config
+        update_info["metadata"].update({"last_commit": current_head})
+        click.secho("info: updating last recorded commit to current HEAD.", fg="yellow")
+        project.config = update_info
+    else:
+        click.secho("success: nothing to update.", fg="green")
+        exit(0)
+
+    pass
+
+@cli.command()
+@click.argument("old")
+@click.argument("new")
+@click.option("--dry-run", is_flag=True)
+@click.pass_obj
+def rename_analysis(project, old, new, dry_run):
+    """Rename existing analysis."""
+
+    root = Path(project.config[0]["params"]["root"])
+    old_analysis_path = (root / "control" / old)
+    new_analysis_path = (root / "control" / new)
+
+    if not old_analysis_path.exists():
+        click.secho("fatal: analysis directory not found -- %s" % str(old), fg="red")
+        exit(1)
+
+    if new_analysis_path.exists():
+        click.secho("fatal: target anlaysis directory already exists", fg="red")
+        exit(1)
+
+    if dry_run:
+        click.secho("info: will rename following directorie(s)", fg="green")
+        click.secho("%s --> %s" % (str(old_analysis_path), str(new_analysis_path)), fg="yellow")
+        click.secho("%s --> %s" % (str(root / "work" / old), str(root / "work" / new)), fg="yellow")
+
+        click.secho("info: will update following symlink(s) ", fg="green")
+        click.secho("%s --> %s" % (str(old_analysis_path / "work"), str(root / "work" / new)), fg="yellow")
+        exit(0)
+
+    try:
+        new_analysis_path = old_analysis_path.rename(root / "control" / new)
+        new_work_path = (root / "work" / old).rename(root / "work" / new)
+
+        (new_analysis_path / "tmp").symlink_to(new_work_path, target_is_directory=True)
+        (new_analysis_path / "tmp").replace(new_analysis_path / "work")
+        click.secho("success: renamed %s --> %s." % (old, new), fg="green")
+    except FileExistsError as e:
+        click.secho("fatal: directories already exist -- %s" % str(e), fg="red")
+        exit(1)
 
 
 @cli.command()
@@ -218,7 +309,7 @@ def add_data(project, name, prefix):
         click.secho("success: created %s." % dir_name, fg="green")
     except FileExistsError as e:
         click.secho("fatal: directories already exist -- %s" % str(e), fg="red")
-        exit(0)
+        exit(1)
 
 
 @cli.command()
@@ -282,3 +373,4 @@ def save(project, path):
     except Exception as e:
         click.secho("fatal: couldn't save -- %s" % str(e), fg="red")
         click.echo("tip: nothing to commit?")
+        exit(0)
