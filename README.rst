@@ -1,5 +1,6 @@
 makebio
 -------
+
 Manage computational biology projects with ease.
 
 Installation
@@ -16,6 +17,50 @@ Or for ZSH,
 ::
     eval "$(_MAKEBIO_COMPLETE=source_zsh makebio)"
     
+Philosophy
+----------
+
+:code:`makebio` is inspired by project management practices in :code:`@theparkerlab` and "*A Quick
+Guide to Organizing Computational Biology Projects*" by WS Noble [#]_. Using
+:code:`makebio` is easy and intuitive, and it is flexible enough to be used in a collaborative
+environment.
+
+The core idea of :code:`makebio` is to create and manage a specific directory layout for your
+project. Using :code:`makebio init`, for example, will setup the following files and directories:
+
+.. code-block::
+  project_dir/
+      bin/
+      control/
+      figures/
+      notebooks/
+      src/
+      results/
+      data/ --> symlink
+      work/ --> symlink
+      makebio.toml
+
+This structure allows us to keep:
+
+* analysis files in one place --- :code:`control` directory
+* intermediate files in one place --- :code:`work` directory. You may symlink this directory to
+  :code:`/tmp`, :code:`/scratch` space, or a destination with a large enough space.
+* results (produced from workflows or scripts) in one place --- :code:`results` directory
+* raw data in one place --- :code:`data` directory
+* essential project files to reproduce your project results
+
+Workflow
+^^^^^^^^
+
+#. Setup an empty project directory with :code:`makebio init`.
+#. Create a new analysis (:code:`<NAME>`) with :code:`makebio add-analysis`. This will create a (1) new directory in
+   the :code:`control/`, and (2) a new directory in the :code:`results/` directory with the name of
+   the analysis.
+#. Add your analysis files in the :code:`control/<NAME>` directory. Make sure all the output is
+   written to the :code:`results/<NAME>` directory.
+#. Save your project using :code:`makebio save`.
+
+
 Usage
 -----
 
@@ -69,3 +114,9 @@ See :code:`makebio --help`.
     save             Save a (Git) snapshot.
     show             Show current configuration.
     update           Refresh configuration with new changes.
+
+.. rubric:: Footnotes
+
+.. [#] Noble W. S., 2009 A Quick Guide to Organizing Computational Biology
+   Projects. PLOS Computational Biology 5: e1000424.
+   https://doi.org/10.1371/journal.pcbi.1000424
